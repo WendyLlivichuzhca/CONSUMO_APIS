@@ -59,32 +59,41 @@ if menu == "API":
     st.dataframe(pd.DataFrame(users))
 
 if menu == "SQLite":
-    st.header("Guardando datos en SQLite")
+    st.header("Guardar datos en SQLite")
+    st.write(f"Conectando a la API: `{API_URL}`")
 
-    response = requests.get(API_URL, timeout=20)
-    users = response.json()
+    # Botón para guardar datos manualmente
+    if st.button("💾 Guardar datos en SQLite"):
+        try:
+            response = requests.get(API_URL, timeout=20)
+            if response.status_code != 200:
+                st.error(f"Error al consumir la API ({response.status_code})")
+            else:
+                users = response.json()
+                conn = sqlite3.connect(DB_NAME)
+                cur = conn.cursor()
+                cur.execute('DROP TABLE IF EXISTS users;')
+                cur.execute('''
+                    CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY,
+                        name TEXT,
+                        username TEXT,
+                        email TEXT,
+                        phone TEXT,
+                        website TEXT
+                    )
+                ''')
+                for u in users:
+                    cur.execute('''
+                        INSERT OR REPLACE INTO users (id, name, username, email, phone, website)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (u.get('id'), u.get('name'), u.get('username'), u.get('email'), u.get('phone'), u.get('website')))
+                conn.commit()
+                conn.close()
+                st.success("✅ Datos guardados exitosamente en la base de datos SQLite")
+        except Exception as e:
+            st.error(f"❌ Ocurrió un error: {e}")
 
-    conn = sqlite3.connect(DB_NAME)
-    cur = conn.cursor()
-    cur.execute('DROP TABLE IF EXISTS users;')
-    cur.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        username TEXT,
-        email TEXT,
-        phone TEXT,
-        website TEXT
-    )
-    ''')
-    for u in users:
-        cur.execute('''
-            INSERT OR REPLACE INTO users (id, name, username, email, phone, website)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (u.get('id'), u.get('name'), u.get('username'), u.get('email'), u.get('phone'), u.get('website')))
-    conn.commit()
-    conn.close()
-    st.success("Datos guardados exitosamente en la base de datos SQLite")
 
 if menu == "Pandas":
     st.header("Lectura y procesamiento con Pandas")
